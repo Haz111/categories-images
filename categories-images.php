@@ -4,7 +4,7 @@
  * Plugin URI: http://zahlan.net/blog/2012/06/categories-images/
  * Description: Categories Images Plugin allow you to add an image to category or any custom term.
  * Author: Muhammad Said El Zahlan
- * Version: 2.5.2
+ * Version: 2.5.3
  * Author URI: http://zahlan.net/
  * Domain Path: /languages
  * Text Domain: categories-images
@@ -26,7 +26,7 @@ function z_init() {
 		$zci_options = get_option('zci_options');
 		if (empty($zci_options['excluded_taxonomies']))
 			$zci_options['excluded_taxonomies'] = array();
-		
+
 	    foreach ($z_taxonomies as $z_taxonomy) {
 			if (in_array($z_taxonomy, $zci_options['excluded_taxonomies']))
 				continue;
@@ -56,7 +56,7 @@ function z_add_texonomy_field() {
 		wp_enqueue_style('thickbox');
 		wp_enqueue_script('thickbox');
 	}
-	
+
 	echo '<div class="form-field">
 		<label for="taxonomy_image">' . __('Image', 'categories-images') . '</label>
 		<input type="text" name="taxonomy_image" id="taxonomy_image" value="" />
@@ -73,8 +73,8 @@ function z_edit_texonomy_field($taxonomy) {
 		wp_enqueue_style('thickbox');
 		wp_enqueue_script('thickbox');
 	}
-	
-	if (z_taxonomy_image_url( $taxonomy->term_id, NULL, TRUE ) == Z_IMAGE_PLACEHOLDER) 
+
+	if (z_taxonomy_image_url( $taxonomy->term_id, NULL, TRUE ) == Z_IMAGE_PLACEHOLDER)
 		$image_url = "";
 	else
 		$image_url = z_taxonomy_image_url( $taxonomy->term_id, NULL, TRUE );
@@ -120,7 +120,7 @@ function z_script() {
 					return false;
 				}
 			});
-			
+
 			$(".z_remove_image_button").click(function() {
 				$(".taxonomy-image").attr("src", "'.Z_IMAGE_PLACEHOLDER.'");
 				$("#taxonomy_image").val("");
@@ -128,7 +128,7 @@ function z_script() {
 				$(".inline-edit-col :input[name=\'taxonomy_image\']").val("");
 				return false;
 			});
-			
+
 			if (wordpress_ver < "3.5") {
 				window.send_to_editor = function(html) {
 					imgurl = $("img",html).attr("src");
@@ -141,8 +141,8 @@ function z_script() {
 					tb_remove();
 				}
 			}
-			
-			$(".editinline").click(function() {	
+
+			$(".editinline").click(function() {
 			    var tax_id = $(this).parents("tr").attr("id").substr(4);
 			    var thumb = $("#tag-"+tax_id+" .thumb img").attr("src");
 
@@ -151,7 +151,7 @@ function z_script() {
 				} else {
 					$(".inline-edit-col :input[name=\'taxonomy_image\']").val("");
 				}
-				
+
 				$(".inline-edit-col .title img").attr("src",thumb);
 			});
 	    });
@@ -179,12 +179,14 @@ function z_taxonomy_image_url($term_id = NULL, $size = 'full', $return_placehold
 	if (!$term_id) {
 		if (is_category())
 			$term_id = get_query_var('cat');
+		elseif (is_tag())
+			$term_id = get_query_var('tag_id');
 		elseif (is_tax()) {
 			$current_term = get_term_by('slug', get_query_var('term'), get_query_var('taxonomy'));
 			$term_id = $current_term->term_id;
 		}
 	}
-	
+
     $taxonomy_image_url = get_option('z_taxonomy_image'.$term_id);
     if(!empty($taxonomy_image_url)) {
 	    $attachment_id = z_get_attachment_id_by_url($taxonomy_image_url);
@@ -201,7 +203,7 @@ function z_taxonomy_image_url($term_id = NULL, $size = 'full', $return_placehold
 }
 
 function z_quick_edit_custom_box($column_name, $screen, $name) {
-	if ($column_name == 'thumb') 
+	if ($column_name == 'thumb')
 		echo '<fieldset>
 		<div class="thumb inline-edit-col">
 			<label>
@@ -245,7 +247,7 @@ function z_taxonomy_columns( $columns ) {
 function z_taxonomy_column( $columns, $column, $id ) {
 	if ( $column == 'thumb' )
 		$columns = '<span><img src="' . z_taxonomy_image_url($id, 'thumbnail', TRUE) . '" alt="' . __('Thumbnail', 'categories-images') . '" class="wp-post-image" /></span>';
-	
+
 	return $columns;
 }
 
@@ -317,12 +319,14 @@ function z_taxonomy_image($term_id = NULL, $size = 'full', $attr = NULL, $echo =
 	if (!$term_id) {
 		if (is_category())
 			$term_id = get_query_var('cat');
+		elseif (is_tag())
+			$term_id = get_query_var('tag_id');
 		elseif (is_tax()) {
 			$current_term = get_term_by('slug', get_query_var('term'), get_query_var('taxonomy'));
 			$term_id = $current_term->term_id;
 		}
 	}
-	
+
     $taxonomy_image_url = get_option('z_taxonomy_image'.$term_id);
     if(!empty($taxonomy_image_url)) {
 	    $attachment_id = z_get_attachment_id_by_url($taxonomy_image_url);
