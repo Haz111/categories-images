@@ -4,7 +4,7 @@
  * Plugin URI: http://zahlan.net/blog/2012/06/categories-images/
  * Description: Categories Images Plugin allow you to add an image to category or any custom term.
  * Author: Muhammad Said El Zahlan
- * Version: 2.5.3
+ * Version: 2.5.3.1
  * Author URI: http://zahlan.net/
  * Domain Path: /languages
  * Text Domain: categories-images
@@ -20,6 +20,7 @@ define('Z_IMAGE_PLACEHOLDER', Z_PLUGIN_URL."/images/placeholder.png");
 load_plugin_textdomain('categories-images', FALSE, 'categories-images/languages');
 
 add_action('admin_init', 'z_init');
+
 function z_init() {
 	$z_taxonomies = get_taxonomies();
 	if (is_array($z_taxonomies)) {
@@ -28,12 +29,12 @@ function z_init() {
 			$zci_options['excluded_taxonomies'] = array();
 
 	    foreach ($z_taxonomies as $z_taxonomy) {
-			if (in_array($z_taxonomy, $zci_options['excluded_taxonomies']))
-				continue;
-	        add_action($z_taxonomy.'_add_form_fields', 'z_add_texonomy_field');
-			add_action($z_taxonomy.'_edit_form_fields', 'z_edit_texonomy_field');
-			add_filter( 'manage_edit-' . $z_taxonomy . '_columns', 'z_taxonomy_columns' );
-			add_filter( 'manage_' . $z_taxonomy . '_custom_column', 'z_taxonomy_column', 10, 3 );
+				if (in_array($z_taxonomy, $zci_options['excluded_taxonomies']))
+					continue;
+		    add_action($z_taxonomy.'_add_form_fields', 'z_add_texonomy_field');
+				add_action($z_taxonomy.'_edit_form_fields', 'z_edit_texonomy_field');
+				add_filter( 'manage_edit-' . $z_taxonomy . '_columns', 'z_taxonomy_columns' );
+				add_filter( 'manage_' . $z_taxonomy . '_custom_column', 'z_taxonomy_column', 10, 3 );
 	    }
 	}
 }
@@ -49,7 +50,7 @@ function z_add_style() {
 }
 
 // add image field in add form
-function z_add_texonomy_field() {
+function z_add_texonomy_field($taxonomy) {
 	if (get_bloginfo('version') >= 3.5)
 		wp_enqueue_media();
 	else {
@@ -62,7 +63,13 @@ function z_add_texonomy_field() {
 		<input type="text" name="taxonomy_image" id="taxonomy_image" value="" />
 		<br/>
 		<button class="z_upload_image_button button">' . __('Upload/Add image', 'categories-images') . '</button>
-	</div>'.z_script();
+	</div>'.
+	z_script().
+	'<div class="form-field term-colorpicker-wrap">
+	  <label for="taxonomy_color">Color</label>
+	  <input name="taxonomy_color" value="#ffffff" class="colorpicker" id="term-colorpicker" />
+	  <p>Choose color to use for name of this category.</p>
+  </div>';
 }
 
 // add image field in edit form
@@ -74,6 +81,8 @@ function z_edit_texonomy_field($taxonomy) {
 		wp_enqueue_script('thickbox');
 	}
 
+	$color = z_taxonomy_color($taxonomy->term_id);
+
 	if (z_taxonomy_image_url( $taxonomy->term_id, NULL, TRUE ) == Z_IMAGE_PLACEHOLDER)
 		$image_url = "";
 	else
@@ -84,7 +93,15 @@ function z_edit_texonomy_field($taxonomy) {
 		<button class="z_upload_image_button button">' . __('Upload/Add image', 'categories-images') . '</button>
 		<button class="z_remove_image_button button">' . __('Remove image', 'categories-images') . '</button>
 		</td>
-	</tr>'.z_script();
+	</tr>'.
+	z_script().
+	'<tr class="form-field">
+		<th scope="row" valign="top"><label for="taxonomy_color">' . __('Color', 'categories-images') . '</label></th>
+		<td>
+			<input name="taxonomy_color" value="'.$color.'" class="colorpicker" id="term-colorpicker" />
+			<p class="description">Choose color to use for name of this category.</p>
+		</td>
+	</tr>';
 }
 
 // upload using wordpress upload
@@ -158,13 +175,20 @@ function z_script() {
 	</script>';
 }
 
+
+function z_save_taxonomy_image( $term_id ) {
+    if(isset($_POST['taxonomy_image']))
+        update_option('z_taxonomy_image'.$term_id, $_POST['taxonomy_image'], NULL);
+
+		if( isset( $_POST['taxonomy_color'] ) && ! empty( $_POST['taxonomy_color'] ) ) {
+        update_term_meta( $term_id, 'taxonomy_color', sanitize_hex_color_no_hash( $_POST['taxonomy_color'] ) );
+    } else {
+        delete_term_meta( $term_id, 'taxonomy_color' );
+    }
+}
 // save our taxonomy image while edit or save term
 add_action('edit_term','z_save_taxonomy_image');
 add_action('create_term','z_save_taxonomy_image');
-function z_save_taxonomy_image($term_id) {
-    if(isset($_POST['taxonomy_image']))
-        update_option('z_taxonomy_image'.$term_id, $_POST['taxonomy_image'], NULL);
-}
 
 // get attachment ID by image url
 function z_get_attachment_id_by_url($image_src) {
@@ -187,19 +211,35 @@ function z_taxonomy_image_url($term_id = NULL, $size = 'full', $return_placehold
 		}
 	}
 
-    $taxonomy_image_url = get_option('z_taxonomy_image'.$term_id);
-    if(!empty($taxonomy_image_url)) {
-	    $attachment_id = z_get_attachment_id_by_url($taxonomy_image_url);
-	    if(!empty($attachment_id)) {
-	    	$taxonomy_image_url = wp_get_attachment_image_src($attachment_id, $size);
-		    $taxonomy_image_url = $taxonomy_image_url[0];
-	    }
+  $taxonomy_image_url = get_option('z_taxonomy_image'.$term_id);
+  if(!empty($taxonomy_image_url)) {
+    $attachment_id = z_get_attachment_id_by_url($taxonomy_image_url);
+    if(!empty($attachment_id)) {
+    	$taxonomy_image_url = wp_get_attachment_image_src($attachment_id, $size);
+	    $taxonomy_image_url = $taxonomy_image_url[0];
+    }
 	}
 
-    if ($return_placeholder)
+  if ($return_placeholder)
 		return ($taxonomy_image_url != '') ? $taxonomy_image_url : Z_IMAGE_PLACEHOLDER;
 	else
 		return $taxonomy_image_url;
+}
+
+function z_taxonomy_color($term_id = NULL) {
+	if (!$term_id) {
+		if (is_category())
+			$term_id = get_query_var('cat');
+		elseif (is_tag())
+			$term_id = get_query_var('tag_id');
+		elseif (is_tax()) {
+			$current_term = get_term_by('slug', get_query_var('term'), get_query_var('taxonomy'));
+			$term_id = $current_term->term_id;
+		}
+	}
+
+	$color = get_term_meta( $term_id, 'taxonomy_color', true );
+	return ( ! empty( $color ) ) ? "#{$color}" : '#ffffff';
 }
 
 function z_quick_edit_custom_box($column_name, $screen, $name) {
@@ -358,3 +398,31 @@ function z_taxonomy_image($term_id = NULL, $size = 'full', $attr = NULL, $echo =
 	else
 		return $taxonomy_image;
 }
+
+
+/**
+ * Print javascript to initialize the colorpicker
+ * - https://developer.wordpress.org/reference/hooks/admin_print_scripts/
+ *
+ * @return void
+ */
+function colorpicker_init_inline() {
+    if( null !== ( $screen = get_current_screen() ) && 'edit-category' !== $screen->id ) {
+        return;
+    }
+
+		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_script( 'wp-color-picker');
+
+  ?>
+    <script>
+        jQuery( document ).ready( function( $ ) {
+            $( '.colorpicker' ).wpColorPicker();
+        } ); // End Document Ready JQuery
+    </script>
+
+  <?php
+
+}
+
+add_action( 'admin_print_scripts', 'colorpicker_init_inline', 20 );
